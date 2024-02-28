@@ -161,3 +161,4 @@ cython_debug/
 
 .data/
 qdrant_storage/
+.DS_Store

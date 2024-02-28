@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Page</title>
+    <!-- Bootstrap CSS via CDN -->
+    <link href="static/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="input-group mb-3">
+                    <input type="text" maxlength="50" id="searchInput" class="form-control" placeholder="Write image description here..." aria-label="Search" aria-describedby="button-search">
+                    <button class="btn btn-outline-secondary" type="button" id="button-search">Search</button>
+                </div>
+                <div class="input-group mb-3">
+                    <div class="input-group mb-3">
+                    <label class="input-group-text" for="numberSelect">Num Results:</label>
+                    <select class="form-select" id="numberSelect">
+                        <option value="1" selected>1</option>
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                    </select>
+                </div>
+                </div>
+            </div>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div id="search-results" class="mt-3">
+                    <!-- Search results will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS via CDN (Optional, if you need JavaScript functionality from Bootstrap) -->
+    <script src="static/bootstrap.bundle.min.js"></script>
+
+<script>
+
+
+        document.getElementById("button-search").addEventListener("click", async function () {
+
+            const searchQuery = document.getElementById("searchInput").value;
+
+            if (searchQuery.trim() !== "") {
+
+                const limit = document.getElementById('numberSelect').value;
+
+                    // Send a POST request to the server with the search query in JSON format
+                    const response = await fetch("http://localhost:1234/query", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ text: searchQuery, limit: limit })
+                    }).then(response => response.json())
+                    .then(result => render_results(result))
+                    .catch(error => console.log('error', error));
+
+            }
+        });
+
+        // Function to render images
+        function render_results(query_result) {
+
+            const resultsDiv = document.getElementById("search-results");
+            resultsDiv.innerHTML = ""
+
+            JSON.parse(query_result).forEach(item => {
+                //resultsDiv.innerHTML += item.score.toString();
+                const span = document.createElement("span")
+                span.textContent = "Score: " + item.score
+                const imgElement = document.createElement("img");
+                imgElement.src = "data:image/jpeg;base64," + item.image_base64; // Assuming images are in base64 format
+                imgElement.classList.add("img-fluid", "mb-2");
+                resultsDiv.appendChild(span);
+                resultsDiv.appendChild(imgElement);
+            });
+        }
+    </script>
+
+</body>
+</html>

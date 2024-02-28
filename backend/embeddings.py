@@ -1,17 +1,23 @@
+from abc import ABC, abstractmethod
+from typing import Callable
+from typing import Union, List, TypeVar, Tuple
+
 import numpy as np
 import torch
 from transformers import CLIPModel, AutoProcessor, AutoTokenizer
-from typing import Callable
-from abc import ABC, abstractmethod
+
+T = TypeVar('T')
+OneOrMany = Union[T, List[T], Tuple[T]]
+
 
 class TextImageEmbeddingModel(ABC):
 
     @abstractmethod
-    def embed_text(self, texts: list[str], batch_size: int | None = None) -> torch.Tensor:
+    def embed_text(self, texts: OneOrMany[str], batch_size: int | None = None) -> OneOrMany[torch.Tensor]:
         raise NotImplementedError
 
     @abstractmethod
-    def embed_image(self, images: list[np.ndarray], batch_size: int | None = None) -> torch.Tensor:
+    def embed_image(self, images: OneOrMany[np.ndarray], batch_size: int | None = None) -> OneOrMany[torch.Tensor]:
         raise NotImplementedError
 
     @property
@@ -24,9 +30,8 @@ class TextImageEmbeddingModel(ABC):
     def max_text_tokens(self) -> int:
         raise NotImplementedError
 
-    @property
     @abstractmethod
-    def tokenizer(self) -> AutoTokenizer:
+    def count_tokens(self, text: str) -> int:
         raise NotImplementedError
 
 class ClipTextImageEmbeddingModel(TextImageEmbeddingModel):
@@ -66,23 +71,44 @@ class ClipTextImageEmbeddingModel(TextImageEmbeddingModel):
 
         return embeddings / embeddings.norm(p=2, dim=-1, keepdim=True)
 
-    def embed_text(self, texts: list[str], batch_size: int | None = None) -> torch.Tensor:
+    def embed_text(self, texts: OneOrMany[str], batch_size: int | None = None) -> OneOrMany[torch.Tensor]:
 
-        return self._calc_embeddings(
+        is_many = isinstance(texts, (list, tuple))
+
+        if not is_many:
+            texts = [texts]
+
+        res = self._calc_embeddings(
             texts,
             lambda x: self._tokenizer(text=x, padding=True, return_tensors="pt", truncation=True),
             self._model.get_text_features,
             batch_size
         )
 
-    def embed_image(self, images: list[np.ndarray], batch_size: int | None = None) -> torch.Tensor:
+        if not is_many:
+            res = res[0]
 
-        return self._calc_embeddings(
+        return res
+
+
+    def embed_image(self, images: OneOrMany[np.ndarray], batch_size: int | None = None) -> OneOrMany[torch.Tensor]:
+
+        is_many = isinstance(images, (list, tuple))
+
+        if not is_many:
+            images = [images]
+
+        res = self._calc_embeddings(
             images,
             lambda x: self._image_processor(images=x, return_tensors="pt"),
             self._model.get_image_features,
             batch_size
         )
+
+        if not is_many:
+            res = res[0]
+
+        return res
 
     @property
     def embedding_dim(self) -> int:
@@ -92,6 +118,6 @@ class ClipTextImageEmbeddingModel(TextImageEmbeddingModel):
     def max_text_tokens(self) -> int:
         return self._tokenizer.model_max_length
 
-    @property
-    def tokenizer(self) -> AutoTokenizer:
-        return self._tokenizer
+    def count_tokens(self, text: str) -> int:
+        return len(self._tokenizer.tokenize(text=text, add_special_tokens=True))
+
