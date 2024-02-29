@@ -1,17 +1,22 @@
 import base64
 import json
+import os
 import sys
 
-from starlette.responses import FileResponse
+from starlette.responses import HTMLResponse
 
 sys.path.append('../')
 
-from fastapi import FastAPI
-from backend.vectordb import setup_demo
+from fastapi import FastAPI, Request
+from backend.semanticsearch import setup_demo
+from fastapi.middleware.cors import CORSMiddleware
 from backend.config import AppSettings
 
 from pydantic import BaseModel, Field, constr, conint
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+
 
 class UserQuery(BaseModel):
 
@@ -32,14 +37,11 @@ class UserQuery(BaseModel):
 
 app = FastAPI()
 
-
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI()
+FASTPI_PORT = int(os.getenv('FASTAPI_PORT', 1234))
 
 origins = [
     "http://localhost",
-    "http://localhost:1234",
+    f"http://localhost:{FASTPI_PORT}",
 ]
 
 app.add_middleware(
@@ -50,7 +52,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# this is needed for HTML pages to load
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+templates = Jinja2Templates(directory="templates")
+
+
 # here we prepare web server for the demo use case.
 collection_name, search_client = setup_demo()
 
@@ -60,12 +67,16 @@ def encode_image_base64(image_path: str):
         return base64.b64encode(f.read()).decode("utf-8")
 
 
-@app.get("/")
-def root():
-    return FileResponse('static/index.html')
+@app.get("/", response_class=HTMLResponse)
+def root(request: Request):
+
+    return templates.TemplateResponse(
+        request=request, name="index.html", context={"url": f"http://localhost:{FASTPI_PORT}/query"}
+    )
 
 @app.post("/query/")
 def query(query: UserQuery):
+    """Issue search query against backend and return images as base64 along with score"""
 
     res = search_client.search(
         collection_name,

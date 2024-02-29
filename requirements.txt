@@ -1,6 +1,7 @@
+jupyter
 torch==2.2.1
 transformers==4.38.1
 qdrant-client==1.7.3
+pillow==10.2.0
 uvicorn==0.27.1
 fastapi==0.110.0
-jupyter==1.0.0

@@ -3,20 +3,28 @@ version: '3.7'
 services:
   searchapp:
     container_name: text2image
-    image: text2image:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "8000:8000"
-      - "8888:8888"
+      - "2222:2222"
+      - "1235:1235"
     depends_on:
       - qdrant
     environment:
       - QDRANT_URL=http://qdrant
       - QDRANT_PORT=6333
+      - JUPYTER_PORT=1235
+      - FASTAPI_PORT=2222
+      - SEARCHAPP_DATA_BASEDIR=/searchapp_data
+    volumes:
+      - ./data/embedding_model:/searchapp_data/embedding_model # embedding model weights
+      - ./data/images:/searchapp_data/images # folder containing images
 
   qdrant:
     container_name: qdrant
     image: qdrant/qdrant:latest
     ports:
-      - "6333:6333"
+      - "6333:6333" # don't change qdrant default port from here
     volumes:
-      - ./backend/.data/qdrant_storage:/qdrant/storage
+      - ./data/qdrant_storage:/qdrant/storage # qdrant storage (already contains demo collection pre-populated with images)

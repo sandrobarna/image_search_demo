@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Page</title>
     <!-- Bootstrap CSS via CDN -->
-    <link href="static/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', path='/bootstrap.min.css') }}" rel="stylesheet">
 </head>
 <body>
     <div class="container mt-5">
@@ -37,8 +37,10 @@
         </div>
     </div>
 
+    <input type="hidden" value="{{ url }}" id="searchEndpointUrl" />
+
     <!-- Bootstrap JS via CDN (Optional, if you need JavaScript functionality from Bootstrap) -->
-    <script src="static/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', path='/bootstrap.bundle.min.js') }}"></script>
 
 <script>
 
@@ -47,12 +49,14 @@
 
             const searchQuery = document.getElementById("searchInput").value;
 
+            const searchEndpointUrl = document.getElementById("searchEndpointUrl").value;
+
             if (searchQuery.trim() !== "") {
 
                 const limit = document.getElementById('numberSelect').value;
 
                     // Send a POST request to the server with the search query in JSON format
-                    const response = await fetch("http://localhost:1234/query", {
+                    const response = await fetch(searchEndpointUrl, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json"
@@ -74,12 +78,15 @@
             JSON.parse(query_result).forEach(item => {
                 //resultsDiv.innerHTML += item.score.toString();
                 const span = document.createElement("span")
+                const br = document.createElement("br")
                 span.textContent = "Score: " + item.score
                 const imgElement = document.createElement("img");
                 imgElement.src = "data:image/jpeg;base64," + item.image_base64; // Assuming images are in base64 format
                 imgElement.classList.add("img-fluid", "mb-2");
                 resultsDiv.appendChild(span);
+                resultsDiv.appendChild(br);
                 resultsDiv.appendChild(imgElement);
+                resultsDiv.appendChild(br);
             });
         }
     </script>

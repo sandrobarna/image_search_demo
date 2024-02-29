@@ -1,4 +1,5 @@
 import hashlib
+import json
 import logging
 import math
 import sys
@@ -7,7 +8,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams, models, UpdateStatus
+from qdrant_client.http.models import Distance, VectorParams, models, UpdateStatus, ScoredPoint
 
 from backend.config import AppSettings
 from backend.embeddings import TextImageEmbeddingModel, ClipTextImageEmbeddingModel
@@ -17,7 +18,7 @@ logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 logging.getLogger().setLevel(logging.INFO)
 
 
-def _is_image_file(filename: Path):
+def _is_image_file(filename: Path) -> bool:
 
     if not filename.is_file():
         return False
@@ -76,6 +77,12 @@ class SearchEngine:
         return True
 
     def create_collection(self, name: str) -> bool:
+        """Creates collection with given name. Returns True if collection didn't exist and
+        created successfully, False if it existed before.
+
+        :param name:
+        :return:
+        """
 
         if self._collection_exists(name):
             return False
@@ -89,19 +96,19 @@ class SearchEngine:
 
         return True
 
-    def delete_collection(self, name: str):
-
-        if not self._collection_exists(name):
-            return False
-
-        self.qdrant.delete_collection(name)
-
 
     def add_images_from_folder(
         self,
         collection_name: str,
         path: Path | str
     ) -> bool:
+        """This is helper method to populate given collection with image embeddings from the folder.
+        Returns True if all found images from the folder have been indexed successfully, False otherwise.
+
+        :param collection_name: The name of the collection to insert embeddings in. It should exist in advance.
+        :param path: Path to the directory where image files reside.
+        :return:
+        """
 
         path = Path(path)
 
@@ -118,6 +125,7 @@ class SearchEngine:
 
         logger.info(f'Found {len(image_files)} image files.')
 
+        # process uploads in batches
         bs = AppSettings.QDRANT_UPLOAD_BATCH_SIZE
         total_batches = math.ceil(len(image_files) / bs)
 
@@ -155,7 +163,14 @@ class SearchEngine:
         collection_name: str,
         text_query: str,
         limit: int
-    ):
+    ) -> list[ScoredPoint]:
+        """Performs KNN search of images using text query.
+
+        :param collection_name: The name of the collection in which search will be done.
+        :param text_query: Query string
+        :param limit: How many top scored results to fetch.
+        :return:
+        """
 
         if not self._collection_exists(collection_name):
             raise ValueError(f"Collection with name '{collection_name}' doesn\'t exist.")
@@ -185,20 +200,21 @@ class SearchEngine:
 
 
 def setup_demo():
+    """This is helper function that spins-up demo by creating test collection and adding images from folder."""
 
     collection_name = 'demo_collection'
+
+    logger.info(f'Initializing demo with settings: {json.dumps(AppSettings.as_dict(), indent=4)}')
 
     emb_model = ClipTextImageEmbeddingModel(AppSettings.MODEL_CACHE_DIR)
 
     search_client = SearchEngine(emb_model)
 
     if search_client.create_collection(collection_name):
-        logger.info(f'Creating collection {collection_name}')
+        logger.info(f'Creating collection {collection_name} and starting index process...')
         if not search_client.add_images_from_folder(collection_name, AppSettings.IMAGE_DATA_PATH):
             raise RuntimeError("Adding images to collection failed.")
 
     return collection_name, search_client
 
-if __name__ == '__main__':
-    setup_demo()
 

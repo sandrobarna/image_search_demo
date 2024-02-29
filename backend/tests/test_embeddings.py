@@ -1,17 +1,14 @@
 import pytest
 import torch
 from PIL import Image
-import numpy as np
 
+from backend.config import AppSettings
 from backend.embeddings import ClipTextImageEmbeddingModel
-
-DATA_DIR = '../.data'
-MODEL_CACHE_DIR = '../.data/embedding_model'
 
 @pytest.fixture
 def model():
 
-    model = ClipTextImageEmbeddingModel(cache_dir=MODEL_CACHE_DIR)
+    model = ClipTextImageEmbeddingModel(cache_dir=AppSettings.MODEL_CACHE_DIR)
 
     return model
 

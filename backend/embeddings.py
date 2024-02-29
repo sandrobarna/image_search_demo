@@ -11,6 +11,7 @@ OneOrMany = Union[T, List[T], Tuple[T]]
 
 
 class TextImageEmbeddingModel(ABC):
+    """Abstract class for Text2Image Embedding models"""
 
     @abstractmethod
     def embed_text(self, texts: OneOrMany[str], batch_size: int | None = None) -> OneOrMany[torch.Tensor]:
@@ -34,6 +35,7 @@ class TextImageEmbeddingModel(ABC):
     def count_tokens(self, text: str) -> int:
         raise NotImplementedError
 
+
 class ClipTextImageEmbeddingModel(TextImageEmbeddingModel):
 
     MODEL_ID = "openai/clip-vit-base-patch32"
@@ -42,6 +44,11 @@ class ClipTextImageEmbeddingModel(TextImageEmbeddingModel):
         self,
         cache_dir: str
     ):
+        """CLIP Vision Transformer based Image2Text embedding model.
+
+
+        :param cache_dir: Folder where model weights are downloaded.
+        """
 
         self._model = CLIPModel.from_pretrained(self.MODEL_ID, cache_dir=cache_dir)
         self._image_processor = AutoProcessor.from_pretrained(self.MODEL_ID, cache_dir=cache_dir)
